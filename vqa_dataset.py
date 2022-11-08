@@ -29,7 +29,7 @@ class VQADataset(Dataset):
             image_filename_pattern (str): The pattern the filenames
                 (eg "COCO_train2014_{}.jpg")
         """
-        self._vqa = TODO  # load the VQA api
+        self._vqa = VQA(annotation_file=annotation_json_file_path, question_file=question_json_file_path)  # load the VQA api
         # also initialize whatever you need from self._vqa
         self._image_dir = image_dir
         self._image_filename_pattern = image_filename_pattern
@@ -71,7 +71,7 @@ class VQADataset(Dataset):
         return {tup[0]: t for t, tup in enumerate(common)}
 
     def __len__(self):
-        return TODO
+        return len(self._vqa.img2qa)
 
     def __getitem__(self, idx):
         """
@@ -83,8 +83,9 @@ class VQADataset(Dataset):
         Returns:
             A dict containing torch tensors for image, question and answers
         """
-        q_anno = TODO  # load annotation
-        q_str = TODO  # question in str format
+        q_id = self._vqa.get_ques_ids(img_ids=idx)[0]
+        q_anno = self._vqa.qa[q_id]  # load annotation
+        q_str = self._vqa.qqa[q_id]  # question in str format
 
         # Load and pre-process image
         name = str(q_anno['image_id'])

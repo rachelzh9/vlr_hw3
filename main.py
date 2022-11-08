@@ -103,12 +103,14 @@ class Trainer:
             # pos_weight[-1] = 0.1  # 'Other' has lower weight
             # and use the pos_weight argument
             # ^OPTIONAL: the expected performance can be achieved without this
-            loss = TODO
+            loss = torch.nn.BCEWithLogitsLoss(scores, answers, reduction='mean')
 
             # Update
             if mode == 'train':
                 # optimize loss
-                TODO
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
 
             # Accuracy
             n_samples += len(scores)
@@ -134,10 +136,15 @@ class Trainer:
                         epoch * _n_show + i, dataformats='CHW'
                     )
                     # add code to show the question
+                    self.writer.add_text('Question%d'%i, data['question'][i].cpu(), epoch * _n_show + i)
                     # the gt answer
+                    self.writer.add_text('GT_Answer%d'%i, data['answers'][i][0].cpu(), epoch * _n_show + i)
                     # and the predicted answer
+                    self.writer.add_text('Pred_Answer%d'%i, self._id2answer[torch.argmax(scores[i][0]).cpu()], epoch * _n_show + i)
             # add code to plot the current accuracy
         acc = n_correct / n_samples
+        self.writer.add_scalar("Accuracy", acc, epoch)
+        self.writer.add_scalar("Loss", loss.item(), epoch)
         print(acc)
         return acc
 
