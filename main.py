@@ -156,7 +156,7 @@ def main():
     parser.add_argument('--model', type=str, default='simple')
     parser.add_argument('--tensorboard_dir', type=str, default=None)
     parser.add_argument('--ckpnt', type=str, default=None)
-    parser.add_argument('--data_path', type=str, default='./')
+    parser.add_argument('--data_path', type=str, default='data/')
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=5e-4)
