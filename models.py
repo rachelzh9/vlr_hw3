@@ -38,10 +38,7 @@ class BaselineNet(nn.Module):
             param.requires_grad = False
 
         # Classifier
-        self.classifier = nn.Linear(
-            self.text_encoder.config.hidden_size + 512,
-            5217
-        )
+        self.classifier = nn.Linear(self.text_encoder.config.hidden_size + 512, 5217)
 
     def forward(self, image, question):
         """Forward pass, image (B, 3, 224, 224), qs list of str."""
@@ -62,7 +59,9 @@ class BaselineNet(nn.Module):
     @torch.no_grad()
     def compute_vis_feats(self, image):
         """Convert image tensors to feature tensors."""
-        return torch.mean(self.vis_encoder(image), dim=(2,3))  # feed to vis_encoder and then mean pool on spatial dims
+        return torch.mean(
+            self.vis_encoder(image), dim=(2, 3)
+        )  # feed to vis_encoder and then mean pool on spatial dims
 
     def train(self, mode=True):
         """Override train to set backbones in eval mode."""
@@ -103,17 +102,20 @@ class TransformerNet(BaselineNet):
         # Cross-encoder
         for layer in self.ca:
             vis_feats, text_feats = layer(
-                vis_feats, None,
-                text_feats, text_mask,
-                seq1_pos=vis_pos
+                vis_feats, None, text_feats, text_mask, seq1_pos=vis_pos
             )
 
         # Classifier
-        return self.classifier(torch.cat((
-            (text_feats * (~text_mask)[..., None].float()).sum(1)
-            / (~text_mask)[..., None].float().sum(1),
-            vis_feats.mean(1)
-        ), 1))
+        return self.classifier(
+            torch.cat(
+                (
+                    (text_feats * (~text_mask)[..., None].float()).sum(1)
+                    / (~text_mask)[..., None].float().sum(1),
+                    vis_feats.mean(1),
+                ),
+                1,
+            )
+        )
 
     @torch.no_grad()
     def compute_text_feats(self, text):
@@ -134,7 +136,7 @@ class TransformerNet(BaselineNet):
         B, F, D, _ = encoded_img.shape
         return (
             encoded_img.reshape(B, F, D * D).transpose(1, 2),
-            self.pos_embed(D).reshape(1, -1, D * D).transpose(1, 2)
+            self.pos_embed(D).reshape(1, -1, D * D).transpose(1, 2),
         )
 
 
@@ -153,31 +155,55 @@ class CrossAttentionLayer(nn.Module):
         self.norm_1 = nn.LayerNorm(d_model)
 
         # Self-attention for seq2
-        self.sa2 = TODO
-        self.dropout_2 = TODO
-        self.norm_2 = TODO
+        self.sa2 = nn.MultiheadAttention(
+            d_model, n_heads, dropout=dropout, batch_first=True
+        )
+        self.dropout_2 = nn.Dropout(dropout)
+        self.norm_2 = nn.LayerNorm(d_model)
 
         # Cross attention from seq1 to seq2
-        self.cross_12 = TODO
-        self.dropout_12 = TODO
-        self.norm_12 = TODO
+        self.cross_12 = nn.MultiheadAttention(
+            d_model, n_heads, dropout=dropout, batch_first=True
+        )
+        self.dropout_12 = nn.Dropout(dropout)
+        self.norm_12 = nn.LayerNorm(d_model)
 
         # FFN for seq1
-        self.ffn_12 = nn.Sequential(TODO)  # hidden dim is 1024
-        self.norm_122 = TODO
+        self.ffn_12 = nn.Sequential(
+            nn.Linear(d_model, 1024),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(1024, d_model),
+            nn.Dropout(dropout),
+        )  # hidden dim is 1024
+        self.norm_122 = nn.LayerNorm(d_model)
 
         # Cross attention from seq2 to seq1
-        self.cross_21 = TODO
-        self.dropout_21 = TODO
-        self.norm_21 = TODO
+        self.cross_21 = nn.MultiheadAttention(
+            d_model, n_heads, dropout=dropout, batch_first=True
+        )
+        self.dropout_21 = nn.Dropout(dropout)
+        self.norm_21 = nn.LayerNorm(d_model)
 
         # FFN for seq2
-        self.ffn_21 = nn.Sequential(TODO)  # hidden dim is 1024
-        self.norm_212 = TODO
+        self.ffn_21 = nn.Sequential(
+            nn.Linear(d_model, 1024),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(1024, d_model),
+            nn.Dropout(dropout),
+        )  # hidden dim is 1024
+        self.norm_212 = nn.LayerNorm(d_model)
 
-    def forward(self, seq1, seq1_key_padding_mask, seq2,
-                seq2_key_padding_mask,
-                seq1_pos=None, seq2_pos=None):
+    def forward(
+        self,
+        seq1,
+        seq1_key_padding_mask,
+        seq2,
+        seq2_key_padding_mask,
+        seq1_pos=None,
+        seq2_pos=None,
+    ):
         """Forward pass, seq1 (B, S1, F), seq2 (B, S2, F)."""
         # Self-attention for seq1
         q1 = k1 = v1 = seq1
@@ -189,7 +215,7 @@ class CrossAttentionLayer(nn.Module):
             key=k1,
             value=v1,
             attn_mask=None,
-            key_padding_mask=seq1_key_padding_mask  # (B, S1)
+            key_padding_mask=seq1_key_padding_mask,  # (B, S1)
         )[0]
         seq1 = self.norm_1(seq1 + self.dropout_1(seq1b))
 
@@ -198,7 +224,14 @@ class CrossAttentionLayer(nn.Module):
         if seq2_pos is not None:
             q2 = q2 + seq2_pos
             k2 = k2 + seq2_pos
-        TODO
+        seq2b = self.sa2(
+            query=q2,
+            key=k2,
+            value=v2,
+            attn_mask=None,
+            key_padding_mask=seq2_key_padding_mask,  # (B, S2)
+        )[0]
+        seq2 = self.norm_2(seq2 + self.dropout_2(seq2b))
 
         # Create key, query, value for seq1, seq2
         q1 = k1 = v1 = seq1
@@ -211,10 +244,26 @@ class CrossAttentionLayer(nn.Module):
             k2 = k2 + seq2_pos
 
         # Cross-attention from seq1 to seq2 and FFN
-        TODO
+        seq12b = self.cross_12(
+            query=q1,
+            key=k2,
+            value=v2,
+            attn_mask=None,
+            key_padding_mask=seq2_key_padding_mask,
+        )[0]
+        seq12 = self.norm_12(seq1 + self.dropout_12(seq12b))
+        seq1 = self.norm_122(seq12 + self.ffn_12(seq12))
 
         # Cross-attention from seq2 to seq1 and FFN
-        TODO
+        seq21b = self.cross_21(
+            query=q2,
+            key=k1,
+            value=v1,
+            attn_mask=None,
+            key_padding_mask=seq1_key_padding_mask,
+        )[0]
+        seq21 = self.norm_21(seq2 + self.dropout_21(seq21b))
+        seq2 = self.norm_212(seq21 + self.ffn_21(seq21))
 
         return seq1, seq2
 
