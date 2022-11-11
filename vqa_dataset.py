@@ -55,6 +55,8 @@ class VQADataset(Dataset):
             )
         else:
             self.answer_to_id_map = answer_to_id_map
+        
+        self.question_ids = self._vqa.get_ques_ids()
 
     def _create_id_map(self, word_list, max_list_length):
         """
@@ -83,7 +85,7 @@ class VQADataset(Dataset):
         Returns:
             A dict containing torch tensors for image, question and answers
         """
-        q_id = self._vqa.get_ques_ids()[idx]
+        q_id = self.question_ids[idx]
         q_anno = self._vqa.qa[q_id]  # load annotation
         q_str = self._vqa.qqa[q_id]['question']  # question in str format
 

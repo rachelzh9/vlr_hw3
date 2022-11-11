@@ -42,9 +42,9 @@ class BaselineNet(nn.Module):
 
     def forward(self, image, question):
         """Forward pass, image (B, 3, 224, 224), qs list of str."""
-        vis_out = self.compute_vis_feats(image).squeeze()
+        vis_out = self.compute_vis_feats(image)
         txt_out = self.compute_text_feats(question)
-        x = torch.cat((vis_out, txt_out), dim=1)
+        x = torch.cat((txt_out, vis_out), dim=1)
         return self.classifier(x)
 
     @torch.no_grad()

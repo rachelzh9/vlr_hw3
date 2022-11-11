@@ -137,11 +137,14 @@ class Trainer:
                         epoch * _n_show + i, dataformats='CHW'
                     )
                     # add code to show the question
-                    self.writer.add_text('Question%d'%i, data['question'][i].cpu(), epoch * _n_show + i)
+                    self.writer.add_text('Question%d'%i, data['question'][i], epoch * _n_show + i)
                     # the gt answer
-                    self.writer.add_text('GT_Answer%d'%i, data['answers'][i][0].cpu(), epoch * _n_show + i)
+                    self.writer.add_text('GT_Answer%d'%i, data['answers'][i][0], epoch * _n_show + i)
                     # and the predicted answer
-                    self.writer.add_text('Pred_Answer%d'%i, self._id2answer[torch.argmax(scores[i][0]).cpu()], epoch * _n_show + i)
+                    pred_ans = self._id2answer[torch.argmax(scores[i])]
+                    correct = pred_ans in data['answers'][i]
+                    if correct:
+                        self.writer.add_text('Pred_Answer%d'%i, data['answers'][i][0], epoch * _n_show + i)
             # add code to plot the current accuracy
         acc = n_correct / n_samples
         self.writer.add_scalar("Accuracy", acc, epoch)
@@ -157,7 +160,7 @@ def main():
     parser.add_argument('--model', type=str, default='simple')
     parser.add_argument('--tensorboard_dir', type=str, default=None)
     parser.add_argument('--ckpnt', type=str, default=None)
-    parser.add_argument('--data_path', type=str, default='data/')
+    parser.add_argument('--data_path', type=str, default='')
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=5e-4)
