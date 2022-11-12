@@ -144,26 +144,26 @@ class Trainer:
                 'Loss/' + mode, loss.item(),
                 epoch * len(self.data_loaders[mode]) + step
             )
-            if mode == 'val' and step == 0:  # change this to show other images
-                _n_show = 3  # how many images to plot
-                for i in range(_n_show):
-                    self.writer.add_image(
-                        'Image%d' % i, data['orig_img'][i].cpu().numpy(),
-                        epoch * _n_show + i, dataformats='CHW'
-                    )
-                    # add code to show the question
-                    self.writer.add_text('Question%d'%i, data['question'][i], epoch * _n_show + i)
-                    # the gt answer
-                    breakpoint()
-                    gt_ans = self._id2answer[torch.argmax(data['answers'][i]).item()]
-                    self.writer.add_text('GT_Answer%d'%i, gt_ans, epoch * _n_show + i)
-                    # and the predicted answer
-                    pred_ans = self._id2answer[torch.argmax(scores[i]).item()]
-                    correct = pred_ans in data['answers'][i]
-                    if correct:
-                        self.writer.add_text('Pred_Answer%d'%i, gt_ans, epoch * _n_show + i)
-                    else:
-                        self.writer.add_text('Pred_Answer%d'%i, pred_ans, epoch * _n_show + i)
+            # if mode == 'val' and step == 0:  # change this to show other images
+            _n_show = 3  # how many images to plot
+            for i in range(_n_show):
+                self.writer.add_image(
+                    'Image%d' % i, data['orig_img'][i].cpu().numpy(),
+                    epoch * _n_show + i, dataformats='CHW'
+                )
+                # add code to show the question
+                self.writer.add_text('Question%d'%i, data['question'][i], epoch * _n_show + i)
+                # the gt answer
+                gt_ans = self._id2answer[torch.argmax(data['answers'][i]).item()]
+                self.writer.add_text('GT_Answer%d'%i, gt_ans, epoch * _n_show + i)
+                # and the predicted answer
+                pred_idx = torch.argmax(scores[i]).item()
+                pred_ans = self._id2answer[pred_idx]
+                correct = data['answers'][i][pred_idx].item() == 1.0 
+                if correct:
+                    self.writer.add_text('Pred_Answer%d'%i, gt_ans, epoch * _n_show + i)
+                else:
+                    self.writer.add_text('Pred_Answer%d'%i, pred_ans, epoch * _n_show + i)
             # add code to plot the current accuracy
         acc = n_correct / n_samples
         self.writer.add_scalar("Accuracy/" + mode, acc, epoch * len(self.data_loaders[mode]))
