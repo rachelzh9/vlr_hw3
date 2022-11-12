@@ -56,7 +56,8 @@ class Trainer:
         # Eval?
         if self.args.eval or start_epoch >= self.args.epochs:
             self.model.eval()
-            self.train_test_loop('val')
+            _, freq_dict = self.train_test_loop('val')
+            self.make_histogram(freq_dict, 'val_freq')
             return self.model
 
         # Go!
@@ -69,7 +70,9 @@ class Trainer:
             print("\nValidation")
             self.model.eval()
             with torch.no_grad():
-                val_acc = self.train_test_loop('val', epoch)
+                val_acc, freq_dict = self.train_test_loop('val', epoch)
+                # save histogram
+                self.make_histogram(freq_dict, 'val_'+epoch+'_data')
 
             # Store
             if val_acc >= val_acc_prev_best:
@@ -86,9 +89,6 @@ class Trainer:
                 checkpoint = torch.load(self.args.ckpnt)
                 checkpoint["epoch"] += 1
                 torch.save(checkpoint, self.args.ckpnt)
-
-        # save histogram
-        # self.make_histogram(freq_dict, file_name)
 
         return self.model
 
@@ -140,6 +140,14 @@ class Trainer:
             ).sum().item()  # checks if argmax matches any ground-truth
 
             # Logging
+            for i in range(scores.shape[0]):
+                pred_idx = torch.argmax(scores[i]).item()
+                pred_ans = self._id2answer[pred_idx]
+                if pred_ans not in freq_dict:
+                    freq_dict[pred_ans] = 0
+                else:
+                    freq_dict[pred_ans]+=1
+
             self.writer.add_scalar(
                 'Loss/' + mode, loss.item(),
                 epoch * len(self.data_loaders[mode]) + step
@@ -168,7 +176,7 @@ class Trainer:
         acc = n_correct / n_samples
         self.writer.add_scalar("Accuracy/" + mode, acc, epoch * len(self.data_loaders[mode]))
         print(acc)
-        return acc
+        return acc, freq_dict
 
 
 def main():
