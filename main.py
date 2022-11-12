@@ -2,11 +2,13 @@
 import argparse
 import os
 
+import numpy as np
 import torch
 from torch.nn import functional as F
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 from models import BaselineNet, TransformerNet
@@ -32,6 +34,15 @@ class Trainer:
             for k, v in data_loaders['val'].dataset.answer_to_id_map.items()
         }
         self._id2answer[len(self._id2answer)] = 'Other'
+
+    def make_histogram(self, freq_dict, file_name):
+        # sort by decreasing freq
+        sorted_keys = sorted(freq_dict)
+        sorted_values = [freq_dict[i] for i in sorted_keys]
+        print("answers: {}, freq: {}".format(sorted_keys[:10], sorted_values[:10]))
+        plt.clf()
+        plt.bar([i for i in range(len(sorted_keys))], sorted_values)
+        plt.savefig(file_name+'.png')
 
     def run(self):
         # Set
@@ -76,6 +87,9 @@ class Trainer:
                 checkpoint["epoch"] += 1
                 torch.save(checkpoint, self.args.ckpnt)
 
+        # save histogram
+        # self.make_histogram(freq_dict, file_name)
+
         return self.model
 
     def _load_ckpnt(self):
@@ -88,6 +102,7 @@ class Trainer:
 
     def train_test_loop(self, mode='train', epoch=1000):
         n_correct, n_samples = 0, 0
+        freq_dict = {}
         for step, data in tqdm(enumerate(self.data_loaders[mode])):
 
             # Forward pass
@@ -139,16 +154,18 @@ class Trainer:
                     # add code to show the question
                     self.writer.add_text('Question%d'%i, data['question'][i], epoch * _n_show + i)
                     # the gt answer
-                    self.writer.add_text('GT_Answer%d'%i, data['answers'][i][0], epoch * _n_show + i)
+                    gt_ans = self._id2answer[torch.argmax(data['answers'][i])]
+                    self.writer.add_text('GT_Answer%d'%i, gt_ans, epoch * _n_show + i)
                     # and the predicted answer
                     pred_ans = self._id2answer[torch.argmax(scores[i])]
                     correct = pred_ans in data['answers'][i]
                     if correct:
-                        self.writer.add_text('Pred_Answer%d'%i, data['answers'][i][0], epoch * _n_show + i)
+                        self.writer.add_text('Pred_Answer%d'%i, gt_ans, epoch * _n_show + i)
+                    else:
+                        self.writer.add_text('Pred_Answer%d'%i, pred_ans, epoch * _n_show + i)
             # add code to plot the current accuracy
         acc = n_correct / n_samples
-        self.writer.add_scalar("Accuracy", acc, epoch)
-        self.writer.add_scalar("Loss", loss.item(), epoch)
+        self.writer.add_scalar("Accuracy/" + mode, acc, epoch * len(self.data_loaders[mode]))
         print(acc)
         return acc
 
