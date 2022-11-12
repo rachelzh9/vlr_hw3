@@ -252,7 +252,7 @@ class CrossAttentionLayer(nn.Module):
             key_padding_mask=seq2_key_padding_mask,
         )[0]
         seq12 = self.norm_12(seq1 + self.dropout_12(seq12b))
-        seq1 = self.norm_122(seq12 + self.ffn_12(seq12))
+        ce1 = self.norm_122(seq12 + self.ffn_12(seq12))
 
         # Cross-attention from seq2 to seq1 and FFN
         seq21b = self.cross_21(
@@ -263,9 +263,9 @@ class CrossAttentionLayer(nn.Module):
             key_padding_mask=seq1_key_padding_mask,
         )[0]
         seq21 = self.norm_21(seq2 + self.dropout_21(seq21b))
-        seq2 = self.norm_212(seq21 + self.ffn_21(seq21))
+        ce2 = self.norm_212(seq21 + self.ffn_21(seq21))
 
-        return seq1, seq2
+        return ce1, ce2
 
 
 class PositionEmbeddingSine(nn.Module):

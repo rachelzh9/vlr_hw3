@@ -154,10 +154,11 @@ class Trainer:
                     # add code to show the question
                     self.writer.add_text('Question%d'%i, data['question'][i], epoch * _n_show + i)
                     # the gt answer
-                    gt_ans = self._id2answer[torch.argmax(data['answers'][i])]
+                    breakpoint()
+                    gt_ans = self._id2answer[torch.argmax(data['answers'][i]).item()]
                     self.writer.add_text('GT_Answer%d'%i, gt_ans, epoch * _n_show + i)
                     # and the predicted answer
-                    pred_ans = self._id2answer[torch.argmax(scores[i])]
+                    pred_ans = self._id2answer[torch.argmax(scores[i]).item()]
                     correct = pred_ans in data['answers'][i]
                     if correct:
                         self.writer.add_text('Pred_Answer%d'%i, gt_ans, epoch * _n_show + i)
@@ -177,7 +178,7 @@ def main():
     parser.add_argument('--model', type=str, default='simple')
     parser.add_argument('--tensorboard_dir', type=str, default=None)
     parser.add_argument('--ckpnt', type=str, default=None)
-    parser.add_argument('--data_path', type=str, default='')
+    parser.add_argument('--data_path', type=str, default='data/')
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=5e-4)
