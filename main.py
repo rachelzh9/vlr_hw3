@@ -37,7 +37,7 @@ class Trainer:
 
     def make_histogram(self, freq_dict, file_name):
         # sort by decreasing freq
-        sorted_keys = sorted(freq_dict)
+        sorted_keys = sorted(freq_dict, key=freq_dict.get, reverse=True)
         sorted_values = [freq_dict[i] for i in sorted_keys]
         print("answers: {}, freq: {}".format(sorted_keys[:10], sorted_values[:10]))
         plt.clf()
